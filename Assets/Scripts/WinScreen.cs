@@ -1,19 +1,28 @@
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
-
-// Attach to any GameObject in WinScene.
 public class WinScreen : MonoBehaviour
 {
-    // Called by 'Play Again' button
-    public void PlayAgain()
+    [Header("Buttons")]
+    public Button playAgainButton;
+    public Button quitButton;
+
+    void Start()
+    {
+        if (playAgainButton != null)
+            playAgainButton.onClick.AddListener(PlayAgain);
+
+        if (quitButton != null)
+            quitButton.onClick.AddListener(QuitGame);
+    }
+
+    void PlayAgain()
     {
         SceneManager.LoadScene("Level1");
     }
 
-
-    // Called by 'Quit' button
-    public void QuitGame()
+    void QuitGame()
     {
         Application.Quit();
 #if UNITY_EDITOR
@@ -21,4 +30,3 @@ public class WinScreen : MonoBehaviour
 #endif
     }
 }
-

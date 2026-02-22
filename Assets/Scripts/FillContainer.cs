@@ -1,14 +1,12 @@
 using UnityEngine;
 using TMPro;
 
-// Attach to your container GameObject.
-// No longer detects particles directly — WaterParticleHandler calls AddWater().
 public class FillContainer : MonoBehaviour
 {
     [Header("Fill Settings")]
     public float goalFill      = 100f;
-    public float decreaseRate  = 6f;    // units/sec when no water arriving
-    public float fillGrace     = 0.25f; // seconds before decrease kicks in
+    public float decreaseRate  = 6f;    
+    public float fillGrace     = 0.25f; 
 
     [Header("UI")]
     public TextMeshProUGUI fillText;
@@ -43,7 +41,6 @@ public class FillContainer : MonoBehaviour
         UpdateWaterVisual();
     }
 
-    // Called by WaterParticleHandler each frame particles land
     public void AddWater(float amount)
     {
         if (goalReached) return;

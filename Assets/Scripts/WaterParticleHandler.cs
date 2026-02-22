@@ -6,118 +6,88 @@ public class WaterParticleHandler : MonoBehaviour
 {
     [Header("Fill Target")]
     public FillContainer fillContainer;
-    public Collider      containerCollider; 
 
     [Header("Fill Amount Per Particle")]
     public float fillPerParticle = 1f;
 
-    [Header("Teleporters (optional — add one entry per teleporter pair)")]
+    [Header("Teleporters")]
     public TeleporterConfig[] teleporters;
 
     [System.Serializable]
     public class TeleporterConfig
     {
-        public Collider       entryCollider; 
+        public Transform      entryPoint;    //tp
+        public float          entryRadius = 0.5f;
         public ParticleSystem exitEmitter;   
     }
 
-    ParticleSystem                ps;
-    List<ParticleSystem.Particle> particleList = new List<ParticleSystem.Particle>();
+    [Header("Container Trigger (3D Collider on container mouth)")]
+    public Collider containerCollider;
+
+    ParticleSystem ps;
+    ParticleSystem.Particle[] particles;
+
+    List<ParticleSystem.Particle> triggerList = new List<ParticleSystem.Particle>();
 
     void Start()
     {
-        ps = GetComponent<ParticleSystem>();
-        
-        ConfigureTriggerModule();
+        ps        = GetComponent<ParticleSystem>();
+        particles = new ParticleSystem.Particle[ps.main.maxParticles];
     }
-    
-    void ConfigureTriggerModule()
+
+    void Update()
     {
-        var triggerModule = ps.trigger;
-        triggerModule.enabled = true;
-        triggerModule.colliderQueryMode = ParticleSystemColliderQueryMode.All;
-        
-        // clear da existing colliders (RemoveAllColliders removed in Unity 6)
-        for (int i = 0; i < triggerModule.colliderCount; i++)
-            triggerModule.SetCollider(i, null);
-        
-        int colliderIndex = 0;
-        
-        //  container collider
-        if (containerCollider != null)
+        if (teleporters == null || teleporters.Length == 0) return;
+
+        int count = ps.GetParticles(particles);
+        bool modified = false;
+
+        for (int i = 0; i < count; i++)
         {
-            triggerModule.SetCollider(colliderIndex, containerCollider);
-            colliderIndex++;
-        }
-        
-        // teleporter colliders
-        if (teleporters != null)
-        {
+
+            Vector3 worldPos = ps.main.simulationSpace == ParticleSystemSimulationSpace.Local
+                ? transform.TransformPoint(particles[i].position)
+                : particles[i].position;
+
             foreach (var t in teleporters)
             {
-                if (t.entryCollider != null)
+                if (t.entryPoint == null) continue;
+                float dist = Vector3.Distance(worldPos, t.entryPoint.position);
+
+                if (dist <= t.entryRadius)
                 {
-                    triggerModule.SetCollider(colliderIndex, t.entryCollider);
-                    colliderIndex++;
+                    // Kill this particle
+                    particles[i].remainingLifetime = 0f;
+                    modified = true;
+
+                    // Spawn one at exit
+                    if (t.exitEmitter != null)
+                        t.exitEmitter.Emit(1);
+
+                    break; 
                 }
             }
         }
+
+        if (modified)
+            ps.SetParticles(particles, count);
     }
 
     void OnParticleTrigger()
     {
-        ParticleSystem.ColliderData colliderData;
-        int count = ps.GetTriggerParticles(
-            ParticleSystemTriggerEventType.Enter,
-            particleList,
-            out colliderData);
+        int numEnter = ps.GetTriggerParticles(
+            ParticleSystemTriggerEventType.Enter, triggerList);
 
-        int fillCount = 0;
+        if (numEnter > 0 && fillContainer != null)
+            fillContainer.AddWater(numEnter * fillPerParticle);
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < numEnter; i++)
         {
-            bool particleProcessed = false;
-            
-            int colliderCount = colliderData.GetColliderCount(i);
-            
-            for (int j = 0; j < colliderCount; j++)
-            {
-                Collider col = colliderData.GetCollider(i, j) as Collider;
-                if (col == null) continue;
-
-                if (containerCollider != null && col == containerCollider && !particleProcessed)
-                {
-                    ParticleSystem.Particle p = particleList[i];
-                    p.remainingLifetime = 0f;
-                    particleList[i]     = p;
-                    fillCount++;
-                    particleProcessed = true;
-                }
-
-                foreach (var t in teleporters)
-                {
-                    if (t.entryCollider != null && col == t.entryCollider && !particleProcessed)
-                    {
-                        ParticleSystem.Particle p = particleList[i];
-                        p.remainingLifetime = 0f;
-                        particleList[i]     = p;
-
-                        if (t.exitEmitter != null)
-                            t.exitEmitter.Emit(1);
-
-                        particleProcessed = true;
-                        break;
-                    }
-                }
-                
-                if (particleProcessed)
-                    break;
-            }
+            var p = triggerList[i];
+            p.remainingLifetime = 0f;
+            triggerList[i] = p;
         }
 
-        ps.SetTriggerParticles(ParticleSystemTriggerEventType.Enter, particleList);
-
-        if (fillCount > 0 && fillContainer != null)
-            fillContainer.AddWater(fillCount * fillPerParticle);
+        ps.SetTriggerParticles(ParticleSystemTriggerEventType.Enter, triggerList);
     }
 }

@@ -1,43 +1,53 @@
 using UnityEngine;
 
-
-
 public class Teleporter : MonoBehaviour
 {
-    [Header("Warp Target")]
-    public Transform teleportTarget;    // the exit point
-    public bool      preserveVelocity = true;
+    [Header("References")]
+    public ParticleSystem waterParticleSystem;
+    public Transform teleporterOut;
 
+    [Header("Detection")]
+    public float radius = 0.5f;
 
-    [Header("Cooldown (prevents double-warp)")]
-    public float cooldown = 0.15f;
-    float cooldownTimer;
+    ParticleSystem.Particle[] particles;
 
+    void Start()
+    {
+        particles = new ParticleSystem.Particle[waterParticleSystem.main.maxParticles];
+    }
 
     void Update()
     {
-        if (cooldownTimer > 0f) cooldownTimer -= Time.deltaTime;
+        if (waterParticleSystem == null || teleporterOut == null) return;
+
+        int count = waterParticleSystem.GetParticles(particles);
+        bool changed = false;
+
+        for (int i = 0; i < count; i++)
+        {
+            Vector3 worldPos = waterParticleSystem.main.simulationSpace == ParticleSystemSimulationSpace.Local
+                ? waterParticleSystem.transform.TransformPoint(particles[i].position)
+                : particles[i].position;
+
+            if (Vector3.Distance(worldPos, transform.position) <= radius)
+            {
+                particles[i].position = waterParticleSystem.main.simulationSpace == ParticleSystemSimulationSpace.Local
+                    ? waterParticleSystem.transform.InverseTransformPoint(teleporterOut.position)
+                    : teleporterOut.position;
+
+                changed = true;
+            }
+        }
+
+        if (changed)
+            waterParticleSystem.SetParticles(particles, count);
     }
 
-
-    void OnTriggerEnter2D(Collider2D other)
+    void OnDrawGizmosSelected()
     {
-        if (!other.CompareTag("WaterDroplet")) return;
-        if (cooldownTimer > 0f) return;
-
-
-        cooldownTimer = cooldown;
-
-
-        Rigidbody2D rb = other.GetComponent<Rigidbody2D>();
-        Vector2 vel    = (rb != null && preserveVelocity)
-                         ? rb.linearVelocity : Vector2.zero;
-
-
-        other.transform.position = teleportTarget.position;
-
-
-        if (rb != null) rb.linearVelocity = vel;
+        Gizmos.color = new Color(0.6f, 0.1f, 1f, 0.4f);
+        Gizmos.DrawSphere(transform.position, radius);
+        Gizmos.color = new Color(0.6f, 0.1f, 1f, 1f);
+        Gizmos.DrawWireSphere(transform.position, radius);
     }
 }
-
