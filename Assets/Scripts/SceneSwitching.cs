@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class SceneSwitching : MonoBehaviour
-{
+{   
     void NextLevel()
     {
         int currentLevel = 1;

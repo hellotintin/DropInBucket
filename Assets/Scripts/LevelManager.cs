@@ -10,11 +10,11 @@ public class LevelManager : MonoBehaviour
 
     static readonly string[] levels =
     {
-        "Level1",
-        "Level2",
-        "Level3",
-        "Level4",
-        "Level5",
+        "Level 1",
+        "Level 2",
+        "Level 3",
+        "Level 4",
+        "Level 5",
         "WinScene"
     };
 
@@ -53,4 +53,3 @@ public class LevelManager : MonoBehaviour
 
     public static int LevelNumber => currentIndex + 1;
 }
-
